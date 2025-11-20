@@ -1,4 +1,4 @@
-# Task Tracker Pro (Pure CSS/HTML/Flask - No JavaScript)
+# Task Tracker Pro 
 
 A modern, premium task management web application built with Flask featuring role-based access control, Kanban boards, and team management capabilities - **completely without JavaScript**.
 
