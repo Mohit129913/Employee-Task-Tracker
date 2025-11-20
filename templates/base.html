@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Task Tracker Pro (No JS){% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <meta name="description" content="Professional Task Management System - Pure CSS/HTML/Flask">
+</head>
+<body>
+    <div class="app-container">
+        {% if session.get('user_id') %}
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2 class="logo">
+                    <i class="fas fa-tasks"></i>
+                    TaskTracker Pro
+                </h2>
+            </div>
+
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-details">
+                    <span class="username">{{ session.get('username', 'User') }}</span>
+                    <span class="user-role">{{ session.get('role', 'user')|title }}</span>
+                </div>
+            </div>
+
+            <ul class="nav-menu">
+                {% if session.get('role') == 'admin' %}
+                <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a></li>
+                <!-- <li><a href="{{ url_for('tasks.task_list') }}" class="nav-link">
+                    <i class="fas fa-list"></i> 
+                </a></li> -->
+
+                {% elif session.get('role') == 'manager' %}
+                <li><a href="{{ url_for('manager.dashboard') }}" class="nav-link">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a></li>
+                <li><a href="{{ url_for('manager.kanban') }}" class="nav-link">
+                    <i class="fas fa-columns"></i> Kanban Board
+                </a></li>
+                <li><a href="{{ url_for('tasks.create_task') }}" class="nav-link">
+                    <i class="fas fa-plus"></i> Create Task
+                </a></li>
+
+                {% else %}
+                <li><a href="{{ url_for('employee.dashboard') }}" class="nav-link">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a></li>
+                <li><a href="{{ url_for('employee.kanban') }}" class="nav-link">
+                    <i class="fas fa-columns"></i> My Tasks
+                </a></li>
+                {% if current_user and current_user.is_leader %}
+                <li><a href="{{ url_for('tasks.create_task') }}" class="nav-link">
+                    <i class="fas fa-plus"></i> Create Task
+                </a></li>
+                {% endif %}
+                {% endif %}
+            </ul>
+
+            <div class="sidebar-footer">
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                    <span><i class="fas fa-sign-out-alt"></i> Logout</span>
+                </a>
+            </div>
+        </nav>
+        {% endif %}
+
+        <main class="main-content {% if not session.get('user_id') %}no-sidebar{% endif %}">
+            <div class="content-header">
+                {% block header %}
+                <h1>{% block page_title %}Task Tracker{% endblock %}</h1>
+                {% endblock %}
+            </div>
+
+            <!-- Flash Messages -->
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                                {{ message }}
+                                <a href="#" class="alert-close" onclick="this.parentElement.style.display='none'; return false;">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <div class="content-body">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Floating Action Button for Create Task (Only for managers/leaders) -->
+    {% if session.get('role') == 'manager' or (current_user and current_user.is_leader) %}
+    <a href="{{ url_for('tasks.create_task') }}" class="fab" title="Create New Task">
+        <i class="fas fa-plus"></i>
+    </a>
+    {% endif %}
+
+    {% block extra_html %}{% endblock %}
+</body>
+</html>

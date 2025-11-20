@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.title }} - Task Details{% endblock %}
+{% block page_title %}Task Details{% endblock %}
+
+{% block content %}
+<div class="task-detail-container">
+    <div class="task-detail-header">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+            <h1 class="task-detail-title">{{ task.title }}</h1>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <span class="task-priority {{ task.priority.lower() }}">{{ task.priority }}</span>
+                <span class="status-badge status-{{ task.status }}">{{ task.status.replace('_', ' ')|title }}</span>
+            </div>
+        </div>
+
+        <div class="task-detail-meta">
+            <div class="meta-item">
+                <strong style="color: var(--text-primary);">Assigned to:</strong>
+                <div style="color: var(--text-secondary); margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <div class="user-avatar" style="width: 24px; height: 24px; font-size: 0.75rem;">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    {{ assigned_to.username if assigned_to else 'Unknown' }}
+                </div>
+            </div>
+
+            <div class="meta-item">
+                <strong style="color: var(--text-primary);">Created by:</strong>
+                <div style="color: var(--text-secondary); margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <div class="user-avatar" style="width: 24px; height: 24px; font-size: 0.75rem;">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    {{ created_by.username if created_by else 'Unknown' }}
+                </div>
+            </div>
+
+            <div class="meta-item">
+                <strong style="color: var(--text-primary);">Created:</strong>
+                <div style="color: var(--text-secondary); margin-top: 0.5rem;">
+                    <i class="fas fa-calendar"></i>
+                    {{ task.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </div>
+            </div>
+
+            <div class="meta-item">
+                <strong style="color: var(--text-primary);">Last Updated:</strong>
+                <div style="color: var(--text-secondary); margin-top: 0.5rem;">
+                    <i class="fas fa-clock"></i>
+                    {{ task.updated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </div>
+            </div>
+        </div>
+
+        {% if task.description %}
+        <div style="margin-top: 1.5rem;">
+            <h4 style="color: var(--text-primary); margin-bottom: 0.75rem;">Description</h4>
+            <p style="color: var(--text-secondary); line-height: 1.6; background: var(--tertiary-bg); padding: 1rem; border-radius: var(--radius-md);">{{ task.description }}</p>
+        </div>
+        {% endif %}
+
+                <!-- Deadline Information (NEW) -->
+        {% if task.deadline %}
+        <div style="margin-top: 1.5rem;">
+            <h4 style="color: var(--text-primary); margin-bottom: 0.75rem;">Deadline</h4>
+            <div style="background: var(--tertiary-bg); padding: 1rem; border-radius: var(--radius-md); {% if task.is_overdue() %}border: 2px solid var(--error);{% endif %}">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <i class="fas fa-calendar-alt" style="margin-right: 0.5rem;"></i>
+                        <strong style="color: var(--text-primary);">{{ task.deadline.strftime('%B %d, %Y at %I:%M %p') }}</strong>
+                    </div>
+                    <div>
+                        {% if task.status == 'done' %}
+                        <span style="background: var(--success); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm);">
+                            <i class="fas fa-check"></i> Completed
+                        </span>
+                        {% elif task.is_overdue() %}
+                        <span style="background: var(--error); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); animation: pulse 2s infinite;">
+                            <i class="fas fa-exclamation-triangle"></i> {{ task.get_time_remaining() }}
+                        </span>
+                        {% else %}
+                        <span style="background: var(--info); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm);">
+                            <i class="fas fa-clock"></i> {{ task.get_time_remaining() }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Completion Time (NEW) -->
+        {% if task.status == 'done' and task.get_completion_time() %}
+        <div style="margin-top: 1.5rem;">
+            <h4 style="color: var(--text-primary); margin-bottom: 0.75rem;">Completion Time</h4>
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: var(--radius-md); border: 1px solid rgba(16, 185, 129, 0.3);">
+                <i class="fas fa-hourglass-end" style="margin-right: 0.5rem; color: var(--success);"></i>
+                <strong style="color: var(--success);">Task completed in {{ task.get_completion_time() }}</strong>
+            </div>
+        </div>
+        {% endif %}
+
+
+        {% if task.tags %}
+        <div style="margin-top: 1.5rem;">
+            <h4 style="color: var(--text-primary); margin-bottom: 0.75rem;">Tags</h4>
+            <div>
+                {% for tag in task.get_tags_list() %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Quick Status Update -->
+        {% if can_update %}
+        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-dark);">
+            <h4 style="color: var(--text-primary); margin-bottom: 1rem;">Quick Status Update</h4>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                {% if task.status != 'todo' %}
+                <form method="POST" action="{{ url_for('tasks.update_task_status', task_id=task.id) }}" style="display: inline;">
+                    <input type="hidden" name="status" value="todo">
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="fas fa-undo"></i> Move to To Do
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if task.status != 'in_progress' %}
+                <form method="POST" action="{{ url_for('tasks.update_task_status', task_id=task.id) }}" style="display: inline;">
+                    <input type="hidden" name="status" value="in_progress">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-play"></i> Start Progress
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if task.status != 'done' %}
+                <form method="POST" action="{{ url_for('tasks.update_task_status', task_id=task.id) }}" style="display: inline;">
+                    <input type="hidden" name="status" value="done">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Mark Complete
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Comments Section -->
+    <div class="comments-section">
+        <h3 style="color: var(--text-primary); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+            <i class="fas fa-comments"></i>
+            Comments ({{ comments|length }})
+        </h3>
+
+        {% if comments %}
+            {% for comment in comments %}
+            <div class="comment">
+                <div class="comment-header">
+                    <span class="comment-author">
+                        <i class="fas fa-user"></i>
+                        {{ comment.get_author().username if comment.get_author() else 'Unknown' }}
+                    </span>
+                    <span class="comment-date">{{ comment.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                </div>
+                <div class="comment-text">{{ comment.text }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <h4 class="empty-state-title">No comments yet</h4>
+                <p class="empty-state-text">Be the first to add a comment to this task.</p>
+            </div>
+        {% endif %}
+
+        <!-- Add Comment Form -->
+        <form method="POST" action="{{ url_for('tasks.add_comment', task_id=task.id) }}" style="margin-top: 2rem;">
+            <div class="form-group">
+                <label for="comment">Add a comment</label>
+                <textarea name="comment" id="comment" rows="3" required 
+                          placeholder="Share your thoughts, updates, or questions about this task..."
+                          style="resize: vertical;"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i>
+                    Add Comment
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Back Navigation -->
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{{ url_for('manager.kanban') if current_user.role == 'manager' else url_for('employee.kanban') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i>
+            Back to Kanban Board
+        </a>
+        <a href="{{ url_for('manager.dashboard') if current_user.role == 'manager' else url_for('employee.dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-tachometer-alt"></i>
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

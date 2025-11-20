@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Manager Dashboard - Task Tracker Pro{% endblock %}
+{% block page_title %}Manager Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Welcome Header -->
+    <div style="background: var(--gradient-primary); color: white; padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <h2 style="margin: 0; font-size: 1.75rem; margin-bottom: 0.5rem;">Welcome back, {{ current_user.username if current_user else 'Manager' }}!</h2>
+                <p style="margin: 0; opacity: 0.9;">Here's your team overview and task progress</p>
+            </div>
+            <a href="{{ url_for('tasks.create_task') }}" class="btn" style="background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.3);">
+                <i class="fas fa-plus"></i>
+                Create Task
+            </a>
+        </div>
+    </div>
+    
+    <!-- Stats Overview -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-card-number">{{ employees|length if employees else 0 }}</div>
+            <div class="stat-card-label">Team Members</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-card-icon">
+                <i class="fas fa-crown"></i>
+            </div>
+            <div class="stat-card-number">{{ leaders|length if leaders else 0 }}</div>
+            <div class="stat-card-label">Team Leaders</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-card-icon">
+                <i class="fas fa-tasks"></i>
+            </div>
+            <div class="stat-card-number">{{ task_stats.total if task_stats else 0 }}</div>
+            <div class="stat-card-label">Total Tasks</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-card-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-card-number">{{ task_stats.done if task_stats else 0 }}</div>
+            <div class="stat-card-label">Completed</div>
+        </div>
+    </div>
+    
+    <!-- Team Overview and Progress -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-users"></i>
+                    Team Overview ({{ employees|length if employees else 0 }})
+                </h3>
+                <a href="{{ url_for('manager.kanban') }}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-columns"></i> Kanban
+                </a>
+            </div>
+            <div class="card-body">
+                {% if employees and employees|length > 0 %}
+                    {% for employee in employees %}
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--tertiary-bg); border-radius: var(--radius-md); margin-bottom: 0.75rem; transition: all 0.3s ease;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div class="user-avatar" style="width: 40px; height: 40px;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <strong style="color: var(--text-primary);">{{ employee.username }}</strong>
+                                    {% if employee.is_leader %}
+                                    <span style="background: var(--warning); color: white; padding: 0.125rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem;">
+                                        Leader
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <small style="color: var(--text-muted);">{{ employee.email }}</small>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                            <!-- Task Count Display -->
+                            <div style="text-align: right; color: var(--text-muted); font-size: 0.875rem;">
+                                {% set emp_task_count = 0 %}
+                                {% if team_tasks %}
+                                    {% for task in team_tasks %}
+                                        {% if task.assigned_to_id == employee.id %}
+                                            {% set emp_task_count = emp_task_count + 1 %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                <div style="font-weight: 600; color: var(--text-secondary);">{{ emp_task_count }}</div>
+                                <div style="font-size: 0.75rem;">task{% if emp_task_count != 1 %}s{% endif %}</div>
+                            </div>
+                            
+                            <!-- Promote to Leader Button -->
+                            {% if not employee.is_leader %}
+                            <form method="POST" action="{{ url_for('manager.promote_leader', employee_id=employee.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-warning" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="return confirm('Are you sure you want to promote {{ employee.username }} to Team Leader?');">
+                                    <i class="fas fa-crown"></i> Promote
+                                </button>
+                            </form>
+                            {% else %}
+                            <span style="background: var(--success); color: white; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; display: flex; align-items: center; gap: 0.25rem;">
+                                <i class="fas fa-crown"></i> Leader
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h4 class="empty-state-title">No team members yet</h4>
+                        <p class="empty-state-text">Employees will appear here once assigned to your team</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-chart-line"></i>
+                    Task Progress
+                </h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; gap: 1rem; margin-bottom: 2rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: rgba(6, 182, 212, 0.1); border-radius: var(--radius-md); border: 1px solid rgba(6, 182, 212, 0.2);">
+                        <span style="color: var(--info); display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-clipboard-list"></i> To Do
+                        </span>
+                        <strong style="color: var(--info); font-size: 1.25rem;">{{ task_stats.todo if task_stats else 0 }}</strong>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: rgba(245, 158, 11, 0.1); border-radius: var(--radius-md); border: 1px solid rgba(245, 158, 11, 0.2);">
+                        <span style="color: var(--warning); display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-spinner fa-spin"></i> In Progress
+                        </span>
+                        <strong style="color: var(--warning); font-size: 1.25rem;">{{ task_stats.in_progress if task_stats else 0 }}</strong>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: var(--radius-md); border: 1px solid rgba(16, 185, 129, 0.2);">
+                        <span style="color: var(--success); display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-check-circle"></i> Completed
+                        </span>
+                        <strong style="color: var(--success); font-size: 1.25rem;">{{ task_stats.done if task_stats else 0 }}</strong>
+                    </div>
+                </div>
+                
+                {% if task_stats and task_stats.total > 0 %}
+                <div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--text-secondary); font-weight: 500;">Team Completion Rate</span>
+                        {% set completion_rate = (task_stats.done * 100 / task_stats.total)|round|int %}
+                        <span style="color: var(--text-primary); font-weight: 700; font-size: 1.1rem;">{{ completion_rate }}%</span>
+                    </div>
+                    <div class="progress-bar" style="height: 12px;">
+                        <div class="progress-fill" style="width: {{ completion_rate }}%;"></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Tasks and Quick Actions -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-clock"></i>
+                    Recent Tasks ({{ recent_tasks|length if recent_tasks else 0 }})
+                </h3>
+                <a href="{{ url_for('manager.kanban') }}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-eye"></i> View All
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_tasks and recent_tasks|length > 0 %}
+                    {% for task in recent_tasks %}
+                    <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" style="display: block; padding: 1.25rem; background: var(--tertiary-bg); border-radius: var(--radius-md); margin-bottom: 1rem; text-decoration: none; color: inherit; transition: all 0.3s ease; border: 1px solid var(--border-light);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                            <strong style="color: var(--text-primary); font-size: 1.1rem;">{{ task.title }}</strong>
+                            <span class="task-priority {{ task.priority.lower() }}">{{ task.priority }}</span>
+                        </div>
+                        {% if task.description %}
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.75rem; line-height: 1.5;">{{ task.description[:120] }}{% if task.description|length > 120 %}...{% endif %}</p>
+                        {% endif %}
+                        <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-muted); font-size: 0.875rem;">
+                            <span style="display: flex; align-items: center; gap: 0.25rem;">
+                                <i class="fas fa-user"></i> {{ task.get_assigned_to().username if task.get_assigned_to() else 'Unknown' }}
+                            </span>
+                            <span class="status-badge status-{{ task.status }}">{{ task.status.replace('_', ' ')|title }}</span>
+                            <span style="display: flex; align-items: center; gap: 0.25rem;">
+                                <i class="fas fa-calendar"></i> {{ task.created_at.strftime('%m/%d/%Y') }}
+                            </span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h4 class="empty-state-title">No recent tasks</h4>
+                        <p class="empty-state-text">Tasks will appear here as they are created</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+     
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-rocket"></i>
+                    Quick Actions
+                </h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; gap: 1rem;">
+                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary w-full">
+                        <i class="fas fa-plus"></i>
+                        Create New Task
+                    </a>
+                    <a href="{{ url_for('manager.kanban') }}" class="btn btn-secondary w-full">
+                        <i class="fas fa-columns"></i>
+                        Open Kanban Board
+                    </a>
+                    <a href="{{ url_for('tasks.task_list') }}" class="btn btn-secondary w-full">
+                        <i class="fas fa-list"></i>
+                        View All Tasks
+                    </a>
+                </div>
+                
+                {% if task_stats and task_stats.total > 0 %}
+                <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-dark);">
+                    <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1rem;">Team Insights</h4>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6;">
+                        <p style="margin-bottom: 0.5rem;">
+                            <strong>{{ task_stats.in_progress }}</strong> tasks in progress
+                        </p>
+                        <p style="margin-bottom: 0.5rem;">
+                            <strong>{{ task_stats.todo }}</strong> tasks pending
+                        </p>
+                        <p style="margin-bottom: 0;">
+                            <strong>{{ ((task_stats.done / task_stats.total) * 100)|round|int }}%</strong> completion rate
+                        </p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+               <!-- Team Performance & Deadlines (NEW) -->
+        <div class="card" style="margin-top: 2rem;">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-chart-line"></i>
+                    Team Performance & Deadlines
+                </h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <!-- Overdue Tasks Panel -->
+                    <div>
+                        <h4 style="color: var(--text-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-exclamation-triangle" style="color: var(--error);"></i>
+                            Overdue Tasks
+                        </h4>
+                        {% set overdue_tasks = [] %}
+                        {% if team_tasks %}
+                            {% for task in team_tasks %}
+                                {% if task.is_overdue() %}
+                                    {% set _ = overdue_tasks.append(task) %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                        
+                        {% if overdue_tasks %}
+                            <div style="background: rgba(239, 68, 68, 0.08); padding: 1rem; border-radius: var(--radius-md); border: 2px solid var(--error); margin-bottom: 1rem;">
+                                <strong style="color: var(--error); font-size: 1.5rem;">{{ overdue_tasks|length }}</strong>
+                                <span style="color: var(--text-secondary);"> tasks are overdue</span>
+                            </div>
+                            
+                            {% for task in overdue_tasks[:4] %}
+                            <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" style="display: block; padding: 0.75rem; background: var(--tertiary-bg); border-radius: var(--radius-sm); margin-bottom: 0.5rem; text-decoration: none; color: inherit; border-left: 3px solid var(--error);">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <strong style="color: var(--text-primary);">{{ task.title }}</strong>
+                                    <span style="color: var(--error); font-size: 0.875rem;">{{ task.get_time_remaining() }}</span>
+                                </div>
+                                <small style="color: var(--text-muted);">
+                                    {{ task.get_assigned_to().username if task.get_assigned_to() else 'Unknown' }}
+                                </small>
+                            </a>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">
+                                <div class="empty-state-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <h4 class="empty-state-title">No overdue tasks!</h4>
+                                <p class="empty-state-text">All tasks are on track</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Recently Completed Panel -->
+                    <div>
+                        <h4 style="color: var(--text-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-hourglass-half" style="color: var(--success);"></i>
+                            Recently Completed
+                        </h4>
+                        {% set completed_tasks = [] %}
+                        {% if team_tasks %}
+                            {% for task in team_tasks %}
+                                {% if task.status == 'done' and task.get_completion_time() %}
+                                    {% set _ = completed_tasks.append(task) %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                        
+                        {% if completed_tasks %}
+                            {% for task in completed_tasks[:6] %}
+                            <div style="padding: 0.75rem; background: var(--tertiary-bg); border-radius: var(--radius-sm); margin-bottom: 0.5rem; border-left: 3px solid var(--success);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                    <strong style="color: var(--text-primary); font-size: 0.95rem;">{{ task.title }}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                                    <span style="color: var(--text-muted);">
+                                        {{ task.get_assigned_to().username if task.get_assigned_to() else 'Unknown' }}
+                                    </span>
+                                    <span style="color: var(--success); font-weight: 600;">
+                                        <i class="fas fa-clock"></i> {{ task.get_completion_time() }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">
+                                <div class="empty-state-icon">
+                                    <i class="fas fa-tasks"></i>
+                                </div>
+                                <h4 class="empty-state-title">No completed tasks yet</h4>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Create Task - Task Tracker Pro{% endblock %}
+{% block page_title %}Create New Task{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-plus"></i>
+                Create New Task
+            </h3>
+            <a href="{{ url_for('manager.dashboard') if current_user.role == 'manager' else url_for('employee.dashboard') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="form-group">
+                    <label for="title">Task Title *</label>
+                    <input type="text" name="title" id="title" required 
+                           placeholder="Enter a descriptive task title"
+                           value="{{ request.form.get('title', '') }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea name="description" id="description" rows="4" 
+                              placeholder="Provide detailed description of the task (optional)">{{ request.form.get('description', '') }}</textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="priority">Priority</label>
+                        <select name="priority" id="priority">
+                            <option value="Low" {{ 'selected' if request.form.get('priority') == 'Low' else '' }}>Low Priority</option>
+                            <option value="Medium" {{ 'selected' if request.form.get('priority', 'Medium') == 'Medium' else '' }}>Medium Priority</option>
+                            <option value="High" {{ 'selected' if request.form.get('priority') == 'High' else '' }}>High Priority</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="assigned_to_id">Assign To *</label>
+                        <select name="assigned_to_id" id="assigned_to_id" required>
+                            <option value="">Select Employee</option>
+                            {% if assignable_employees %}
+                                {% for employee in assignable_employees %}
+                                <option value="{{ employee.id }}" {{ 'selected' if request.form.get('assigned_to_id') == employee.id|string else '' }}>
+                                    {{ employee.username }}{% if employee.is_leader %} (Leader){% endif %}
+                                </option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>No assignable employees found</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="deadline">Deadline (Optional)</label>
+                    <input type="datetime-local" name="deadline" id="deadline" 
+                    value="{{ request.form.get('deadline', '') }}">
+                    <small style="color: var(--text-muted); margin-top: 0.5rem; display: block;">
+                        Set a deadline for this task. Employees will be warned when it's overdue.
+                    </small>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="tags">Tags (comma-separated)</label>
+                    <input type="text" name="tags" id="tags" 
+                           placeholder="e.g., frontend, urgent, review, bug-fix"
+                           value="{{ request.form.get('tags', '') }}">
+                    <small style="color: var(--text-muted); margin-top: 0.5rem; display: block;">
+                        Separate multiple tags with commas
+                    </small>
+                </div>
+
+                <div class="form-actions">
+                    <a href="{{ url_for('manager.dashboard') if current_user.role == 'manager' else url_for('employee.dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Create Task
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
